@@ -1,4 +1,4 @@
-# Intersect mobile (Flutter + Mapbox) - Phase 1 spike
+# Stoop mobile (Flutter + Mapbox) - Phase 1 spike
 
 **Status: unvalidated.** This was written without a Flutter SDK, pub.dev access or Mapbox tokens, so it has
 never been analysed, compiled or run. Treat it as a starting point. Expect to fix API-signature drift in

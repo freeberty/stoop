@@ -16,7 +16,7 @@ and no Docker daemon. Anything depending on those is unverified. Be skeptical of
 
 | Item | Risk |
 |---|---|
-| `Intersect.Infrastructure` (EF Core repositories, DbContext, migration wiring) | Never compiled. The query code (NTS envelope intersect, keyset paging with `Guid.CompareTo`, `ExecuteUpdateAsync`) may need fixes. Expect compile errors on first build. |
+| `Stoop.Infrastructure` (EF Core repositories, DbContext, migration wiring) | Never compiled. The query code (NTS envelope intersect, keyset paging with `Guid.CompareTo`, `ExecuteUpdateAsync`) may need fixes. Expect compile errors on first build. |
 | NBitcoin Schnorr verifier | API signatures written from memory. The pure C# verifier is the tested fallback (`Nostr:Verifier=Managed`). |
 | OpenAPI/Swagger packages, xunit package references | Versions unconfirmed. |
 | Dockerfiles and `docker-compose.yml` | Never built or run. |

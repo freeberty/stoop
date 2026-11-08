@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Stoop.Api</RootNamespace>
+    <AssemblyName>Stoop.Api</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!--
+    Offline mode (-p:Offline=true) builds the API against the in-memory store only, without any NuGet
+    package. It exists so the API and SignalR hub can be compiled and run in environments that cannot
+    reach nuget.org. Normal builds include PostgreSQL/PostGIS persistence and OpenAPI.
+  -->
+  <PropertyGroup Condition="'$(Offline)' == 'true'">
+    <DefineConstants>$(DefineConstants);OFFLINE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Stoop.Application\Stoop.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Offline)' != 'true'">
+    <ProjectReference Include="..\Stoop.Infrastructure\Stoop.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
+  </ItemGroup>
+
+</Project>

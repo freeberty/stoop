@@ -39,11 +39,11 @@ export class ApiError extends Error {
 }
 
 // Session storage (cleared when the tab closes). Production hardening: move to an httpOnly cookie.
-let token: string | null = sessionStorage.getItem('intersect.token');
+let token: string | null = sessionStorage.getItem('stoop.token');
 export const getToken = () => token;
 export function setToken(t: string | null) {
   token = t;
-  if (t) sessionStorage.setItem('intersect.token', t); else sessionStorage.removeItem('intersect.token');
+  if (t) sessionStorage.setItem('stoop.token', t); else sessionStorage.removeItem('stoop.token');
 }
 
 export async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {

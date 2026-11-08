@@ -4,7 +4,7 @@ Map-first community discovery. Communities may have a location, a context period
 or both, or neither (global). Members of a community share a server-managed group chat.
 
 The name comes from the front steps of city brownstones, where neighbours sit and talk.
-The code still uses the working name **Intersect** (`Intersect.Api`, `intersect-web`).
+(It was called Intersect while it was a proof of concept.)
 
 **Live demo:** https://stoop.freeberty.com (API: https://stoop-api.freeberty.com, docs at `/docs`).
 The demo runs the in-memory store, so all data resets whenever the API restarts.
@@ -15,10 +15,10 @@ The demo runs the in-memory store, so all data resets whenever the API restarts.
 
 | Path | What |
 |---|---|
-| `backend/src/Intersect.Application` | Domain, services, rules (`AccessPolicy`), in-memory store, Nostr verification. Only depends on the ASP.NET shared framework. |
-| `backend/src/Intersect.Infrastructure` | EF Core + Npgsql + PostGIS persistence, NBitcoin-backed Schnorr verifier, SQL migration. **Not compiled in the authoring environment.** |
-| `backend/src/Intersect.Api` | REST controllers (`/api/v1`), SignalR hub (`/hubs/chat`), auth handler, Swagger (`/docs`). |
-| `backend/tests/Intersect.Tests` | xunit tests (69) over the application layer. |
+| `backend/src/Stoop.Application` | Domain, services, rules (`AccessPolicy`), in-memory store, Nostr verification. Only depends on the ASP.NET shared framework. |
+| `backend/src/Stoop.Infrastructure` | EF Core + Npgsql + PostGIS persistence, NBitcoin-backed Schnorr verifier, SQL migration. **Not compiled in the authoring environment.** |
+| `backend/src/Stoop.Api` | REST controllers (`/api/v1`), SignalR hub (`/hubs/chat`), auth handler, Swagger (`/docs`). |
+| `backend/tests/Stoop.Tests` | xunit tests (69) over the application layer. |
 | `web/` | Vite + TypeScript + MapLibre GL JS client (the working reference UI). |
 | `mobile/` | Flutter + Mapbox spike. **Unvalidated.** |
 | `scripts/e2e-demo.mjs` | End-to-end run of the demo scenario against a live API (59 checks). |
@@ -37,7 +37,7 @@ login events are bound to it.
 ## Run without Docker or a database (this path was tested)
 
 ```bash
-cd backend/src/Intersect.Api
+cd backend/src/Stoop.Api
 ASPNETCORE_ENVIRONMENT=Development dotnet run -p:Offline=true      # in-memory store, seeded, http://localhost:5080
 cd web && npm ci && npm run dev                                     # http://localhost:5173
 ```

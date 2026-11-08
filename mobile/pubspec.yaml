@@ -1,5 +1,5 @@
-name: intersect_mobile
-description: Intersect map-first community discovery (Phase 1 spike, UNVALIDATED - never built in the authoring environment).
+name: stoop_mobile
+description: Stoop map-first community discovery (Phase 1 spike, UNVALIDATED - never built in the authoring environment).
 publish_to: none
 version: 0.1.0+1
 environment:

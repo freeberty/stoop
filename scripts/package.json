@@ -1,5 +1,5 @@
 {
-  "name": "intersect-e2e",
+  "name": "stoop-e2e",
   "private": true,
   "type": "module",
   "description": "End-to-end demo of the POC scenario against a running API (uses nostr-tools as an independent Nostr implementation)",

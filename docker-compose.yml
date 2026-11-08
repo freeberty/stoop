@@ -7,13 +7,13 @@ services:
   db:
     image: postgis/postgis:16-3.4
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-intersect}
-      POSTGRES_USER: ${POSTGRES_USER:-intersect}
+      POSTGRES_DB: ${POSTGRES_DB:-stoop}
+      POSTGRES_USER: ${POSTGRES_USER:-stoop}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-intersect} -d ${POSTGRES_DB:-intersect}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stoop} -d ${POSTGRES_DB:-stoop}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -28,7 +28,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       Persistence__Provider: Postgres
-      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-intersect};Username=${POSTGRES_USER:-intersect};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-stoop};Username=${POSTGRES_USER:-stoop};Password=${POSTGRES_PASSWORD}
       Auth__JwtSecret: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env (min 32 chars)}
       Auth__ExpectedDomain: ${AUTH_EXPECTED_DOMAIN:-localhost}
       Cors__Origins__0: ${WEB_ORIGIN:-http://localhost:5173}
