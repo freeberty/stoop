@@ -69,6 +69,7 @@ export const api = {
   search: (text: string) => request<{ items: CommunitySummary[] }>('GET', `/api/v1/communities/search?q=${encodeURIComponent(text)}&take=8`),
   community: (id: string) => request<CommunityDetails>('GET', `/api/v1/communities/${id}`),
   create: (body: unknown) => request<CommunityDetails>('POST', '/api/v1/communities', body),
+  deleteCommunity: (id: string) => request<void>('DELETE', `/api/v1/communities/${id}`),
   join: (id: string) => request<{ status: MemberStatus }>('POST', `/api/v1/communities/${id}/join`),
   leave: (id: string) => request<void>('POST', `/api/v1/communities/${id}/leave`),
   requestAccess: (id: string) => request<{ status: MemberStatus }>('POST', `/api/v1/communities/${id}/request-access`),

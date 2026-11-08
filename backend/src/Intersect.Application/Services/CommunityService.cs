@@ -17,6 +17,7 @@ public sealed partial class CommunityService(
     IUserRepository users,
     IAuditLog audit,
     IUnitOfWork uow,
+    IRealtimeNotifier notifier,
     TimeProvider time)
 {
     [GeneratedRegex("[^a-z0-9]+")]
@@ -101,6 +102,34 @@ public sealed partial class CommunityService(
         if (member is { Status: MemberStatus.Active })
             conversationId = (await conversations.GetByCommunityAsync(community.Id, ct))?.Id;
         return Mappers.ToDetails(community, member, conversationId);
+    }
+
+    /// <summary>
+    /// Owner only. Archives the community: it disappears from discovery and its page, the chat closes,
+    /// and every member's live chat access is revoked. Data is kept for the audit trail.
+    /// </summary>
+    public async Task DeleteAsync(Guid actorId, Guid communityId, CancellationToken ct = default)
+    {
+        var community = await communities.GetByIdAsync(communityId, ct);
+        if (community is null || community.Status == CommunityStatus.Archived) throw NotFound();
+        var actor = await members.GetAsync(communityId, actorId, ct);
+        if (!AccessPolicy.CanView(community, actor)) throw NotFound();
+        if (actor is not { Status: MemberStatus.Active, Role: MemberRole.Owner })
+            throw AppException.Forbidden("owner_required", "Only the owner can delete this community.");
+
+        var now = time.GetUtcNow();
+        community.Status = CommunityStatus.Archived;
+        var conversation = await conversations.GetByCommunityAsync(communityId, ct);
+        if (conversation is not null) conversation.Status = ConversationStatus.Closed;
+        var active = await members.ListAsync(communityId, MemberStatus.Active, 0, int.MaxValue, ct);
+        audit.Add(new AuditLogEntry
+        {
+            Id = Guid.CreateVersion7(), At = now, ActorUserId = actorId, CommunityId = communityId, Action = "community.delete",
+        });
+        await uow.SaveChangesAsync(ct);
+
+        if (conversation is not null)
+            foreach (var m in active) await notifier.AccessRevokedAsync(conversation.Id, m.UserId, "community_deleted", ct);
     }
 
     private static AppException NotFound() => AppException.NotFound("community_not_found", "Community not found.");

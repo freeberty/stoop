@@ -1,3 +1,4 @@
+using Intersect.Common;
 using Intersect.Contracts;
 using Intersect.Domain;
 using Intersect.Services;
@@ -285,5 +286,52 @@ public class CommunityTests
         var lisbon = await Lisbon(w);
         Assert.True(lisbon.Features.Count > 10);
         Assert.True((await w.Discovery.GetGlobalAsync(null, NoFilter, 0, 100)).Items.Count > 10);
+    }
+
+    [Fact]
+    public async Task Owner_can_delete_community_which_disappears_and_closes_chat()
+    {
+        var w = new World();
+        var owner = await w.NewEmailUserAsync();
+        var member = await w.NewEmailUserAsync();
+        var c = await w.NewCommunityAsync(owner, World.Req("Doomed"));
+        await w.Membership.JoinAsync(member, World.Id(c));
+        var conversation = c.ConversationId!.Value;
+
+        await w.Communities.DeleteAsync(owner, World.Id(c));
+
+        Assert.Empty((await Lisbon(w, owner)).Features);
+        await Err.Expect(ErrorKind.NotFound, "community_not_found", () => w.Communities.GetAsync(owner, c.Community.Slug));
+        await Err.Expect(ErrorKind.NotFound, "community_not_found", () => w.Communities.GetAsync(null, World.Id(c).ToString()));
+        await Err.Expect("conversation_closed", () => w.Chat.SendAsync(conversation, member, "anyone?"));
+        Assert.Contains(w.Notifier.Revoked, r => r.User == member && r.Conversation == conversation && r.Reason == "community_deleted");
+        Assert.Contains(w.Notifier.Revoked, r => r.User == owner && r.Reason == "community_deleted");
+        Assert.Contains("community.delete", w.Store.AuditEntries.Select(a => a.Action));
+        await Err.Expect(ErrorKind.NotFound, "community_not_found", () => w.Communities.DeleteAsync(owner, World.Id(c)));
+    }
+
+    [Fact]
+    public async Task Only_the_owner_can_delete_a_community()
+    {
+        var w = new World();
+        var owner = await w.NewEmailUserAsync();
+        var member = await w.NewEmailUserAsync();
+        var outsider = await w.NewEmailUserAsync();
+        var c = await w.NewCommunityAsync(owner);
+        await w.Membership.JoinAsync(member, World.Id(c));
+
+        await Err.Expect(ErrorKind.Forbidden, "owner_required", () => w.Communities.DeleteAsync(member, World.Id(c)));
+        await Err.Expect(ErrorKind.Forbidden, "owner_required", () => w.Communities.DeleteAsync(outsider, World.Id(c)));
+        Assert.Single((await Lisbon(w)).Features);
+    }
+
+    [Fact]
+    public async Task Private_community_delete_by_outsider_does_not_leak_existence()
+    {
+        var w = new World();
+        var owner = await w.NewEmailUserAsync();
+        var outsider = await w.NewEmailUserAsync();
+        var c = await w.NewCommunityAsync(owner, World.Req("Hidden", vis: Visibility.Private));
+        await Err.Expect(ErrorKind.NotFound, "community_not_found", () => w.Communities.DeleteAsync(outsider, World.Id(c)));
     }
 }

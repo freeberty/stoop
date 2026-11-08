@@ -60,7 +60,7 @@ public sealed class World
         var chat = Options.Create(ChatOpt);
         Tokens = new JwtTokenService(auth, Time);
         Auth = new AuthService(Store, Store, Store, Tokens, new Pbkdf2PasswordHasher(1_000), new ManagedSchnorrVerifier(), Store, auth, Time);
-        Communities = new CommunityService(Store, Store, Store, Store, Store, Store, Time);
+        Communities = new CommunityService(Store, Store, Store, Store, Store, Store, Notifier, Time);
         Discovery = new DiscoveryService(Store, Options.Create(new DiscoveryOptions()), Time);
         Membership = new MembershipService(Store, Store, Store, Store, Store, Store, Notifier, Time);
         Chat = new ChatService(Store, Store, Store, Store, Store, Store, Store, Notifier, new MessageRateLimiter(chat, Time), chat, Time);

@@ -4,6 +4,7 @@ import { clear, el, toast } from './dom';
 
 const FRIENDLY: Record<string, string> = {
   chat_access_denied: 'You no longer have access to this chat.',
+  conversation_closed: 'This chat is closed.',
   conversation_not_found: 'This conversation is not available.',
   message_rate_limited: 'You are sending messages too quickly. Wait a moment.',
   empty_message: 'Type a message first.',
@@ -64,7 +65,10 @@ export class ChatPanel {
     conn.on('MessageDeleted', (e: { conversationId: string; messageId: string }) => {
       if (e.conversationId === this.conversationId) this.list.querySelector(`[data-id="${CSS.escape(e.messageId)}"]`)?.replaceWith(this.tombstone(e.messageId));
     });
-    conn.on('AccessRevoked', (e: { conversationId: string }) => { if (e.conversationId === this.conversationId) this.deny('You were removed from this community. The chat is now closed for you.'); });
+    conn.on('AccessRevoked', (e: { conversationId: string; reason?: string }) => {
+      if (e.conversationId !== this.conversationId) return;
+      this.deny(e.reason === 'community_deleted' ? 'This community was deleted by its owner. The chat is closed.' : 'You were removed from this community. The chat is now closed for you.');
+    });
 
     conn.onreconnecting(() => this.setStatus('Connection lost. Reconnecting…'));
     conn.onreconnected(async () => {

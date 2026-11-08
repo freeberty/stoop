@@ -72,6 +72,14 @@ public sealed class CommunitiesController(CommunityService communities, Membersh
         return await communities.GetAsync(ViewerId, idOrSlug, ct);
     }
 
+    /// <summary>Owner only. Archives the community and closes its chat.</summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await communities.DeleteAsync(UserId, id, ct);
+        return NoContent();
+    }
+
     [AllowAnonymous, HttpGet("search")]
     public async Task<CommunityListDto> Search([FromQuery] string? q, [FromQuery] int skip = 0, [FromQuery] int take = 20, CancellationToken ct = default)
     {

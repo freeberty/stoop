@@ -149,3 +149,29 @@ button { cursor: pointer; }
 .nx-warn { padding: 10px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4;
   background: color-mix(in srgb, #f59e0b 14%, transparent); border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent); }
 .nx-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* "+ New" sits on the map, so it needs a solid fill and a shadow like the other top-bar controls */
+.new-btn { box-shadow: var(--shadow); white-space: nowrap; padding: 10px 14px; border-radius: var(--radius); }
+
+/* Draft pin for a community being created */
+.draft-pin { width: 34px; height: 34px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--accent);
+  border: 3px solid #fff; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.35); cursor: grab; animation: pin-drop 0.25s ease-out; }
+.draft-pin::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: #fff; }
+.draft-pin:active { cursor: grabbing; }
+@keyframes pin-drop { from { opacity: 0; translate: 0 -14px; } to { opacity: 1; translate: 0 0; } }
+.pin-card-head { display: flex; gap: 8px; align-items: center; padding-right: 28px; }
+.pin-card-head h3 { margin: 0; }
+.pin-card-icon { font-size: 1.3rem; }
+
+/* Picking a spot from the create form */
+.pick-banner { position: fixed; top: calc(var(--gutter) + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 30;
+  display: flex; gap: 12px; align-items: center; padding: 10px 12px 10px 16px; border-radius: 999px; background: var(--fg); color: var(--bg);
+  box-shadow: var(--shadow); font-weight: 600; width: max-content; max-width: calc(100vw - 2 * var(--gutter)); }
+.pick-banner .btn { background: var(--bg); color: var(--fg); border: 0; }
+.loc-fields { display: flex; flex-direction: column; gap: 8px; }
+.pick-btn { border-style: dashed; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* Owner-only delete */
+.danger-zone { margin-top: 24px; padding: 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  background: color-mix(in srgb, var(--danger) 6%, transparent); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.danger-zone h4 { margin: 0; color: var(--danger); }

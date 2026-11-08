@@ -6,7 +6,7 @@ import {
 import { ChatPanel } from './chat';
 import { openNostrInfo } from './nostr-info';
 import { $, CATEGORY_LABELS, accessLabel, clear, debounce, el, formatContext, modal, toast } from './dom';
-import { CATEGORY_COLORS, MapLibreAdapter, type MapAdapter, type Viewport } from './map';
+import { CATEGORY_COLORS, MapLibreAdapter, type LngLat, type MapAdapter, type Viewport } from './map';
 
 // ------------------------------------------------------------------ state
 
@@ -177,6 +177,7 @@ function categoryPill(cat: Category) {
 
 function showPreview(f: Feature) {
   const p = f.properties;
+  map.clearDraftPin();
   state.selectedId = p.id; map.setSelected(p.id);
   clear(preview); preview.hidden = false;
   preview.append(
@@ -189,9 +190,28 @@ function showPreview(f: Feature) {
     el('button', { class: 'btn primary wide', text: 'View community', onclick: () => void openCommunity(p.id, false) }));
 }
 
-function clearSelection() { state.selectedId = null; map.setSelected(null); preview.hidden = true; }
+function clearSelection() { state.selectedId = null; map.setSelected(null); map.clearDraftPin(); preview.hidden = true; }
 map.onSelect(showPreview);
-map.onBackgroundClick(() => { if (!drawer.classList.contains('open')) clearSelection(); });
+// Tapping empty map closes an open card; otherwise it drops a pin you can turn into a community.
+map.onBackgroundClick((at) => {
+  if (drawer.classList.contains('open')) return;
+  if (!preview.hidden) { clearSelection(); return; }
+  showPinCard(at);
+});
+
+function showPinCard(at: LngLat) {
+  clearSelection();
+  let pos = at;
+  map.showDraftPin(pos, (p) => { pos = p; });
+  preview.hidden = false;
+  preview.append(
+    el('button', { class: 'icon-btn close', 'aria-label': 'Remove pin', text: '✕', onclick: clearSelection }),
+    el('div', { class: 'pin-card-head' }, el('span', { class: 'pin-card-icon', 'aria-hidden': 'true', text: '📍' }), el('h3', { text: 'Start a community here?' })),
+    el('p', { class: 'muted small', text: 'Drag the pin to fine-tune the spot. You can set the dates it is about in the next step.' }),
+    state.user
+      ? el('button', { class: 'btn primary wide', text: '＋ Create community here', onclick: () => { preview.hidden = true; openCreate(pos); } })
+      : el('button', { class: 'btn primary wide', text: 'Log in to create a community', onclick: openAuth }));
+}
 
 // ------------------------------------------------------------------ community drawer
 
@@ -311,6 +331,18 @@ async function renderManage(body: HTMLElement, communityId: string) {
   section('Members', members.filter((m) => m.status === 'Active'), (m) => m.role === 'Owner' ? [] : [
     el('button', { class: 'btn small ghost', text: 'Remove', onclick: act(() => api.remove(communityId, m.userId, false), 'Member removed') }),
     el('button', { class: 'btn small danger', text: 'Ban', onclick: act(() => api.remove(communityId, m.userId, true), 'Member banned') })]);
+
+  if (current?.myMembership?.role === 'Owner') {
+    const name = current.community.name;
+    body.append(el('div', { class: 'danger-zone' },
+      el('h4', { text: 'Delete community' }),
+      el('p', { class: 'muted small', text: 'Removes it from the map and search, and closes the chat for every member. This cannot be undone.' }),
+      el('button', { class: 'btn danger', text: 'Delete community', onclick: async () => {
+        if (!confirm(`Delete "${name}"? Members lose access to its chat. This cannot be undone.`)) return;
+        try { await api.deleteCommunity(communityId); toast('Community deleted'); closeDrawer(); clearSelection(); cache.clear(); void refresh(map.getViewport(), true); }
+        catch (e) { toast((e as Error).message, 'error'); }
+      } })));
+  }
 }
 
 // ------------------------------------------------------------------ global ("anywhere") communities
@@ -350,7 +382,7 @@ function renderAccount() {
   clear(accountSlot);
   if (state.user) {
     accountSlot.append(
-      el('button', { class: 'btn ghost', title: 'Create a community', text: '＋ New', onclick: openCreate }),
+      el('button', { class: 'btn primary new-btn', title: 'Create a community', text: '＋ New', onclick: () => openCreate() }),
       el('button', { class: 'avatar', title: `${state.user.displayName} (click to log out)`, text: state.user.displayName.slice(0, 1).toUpperCase(), onclick: () => { if (confirm('Log out?')) logout(); } }));
   } else accountSlot.append(el('button', { class: 'btn primary', text: 'Log in', onclick: openAuth }));
 }
@@ -397,28 +429,49 @@ function openAuth() {
 
 // ------------------------------------------------------------------ create community
 
-function openCreate() {
-  const c = map.center();
+function openCreate(at?: LngLat) {
+  let pos: LngLat = at ?? map.center();
   const field = (label: string, input: HTMLElement) => el('label', { class: 'field' }, el('span', { text: label }), input);
   const name = el('input', { type: 'text', required: true, maxlength: '80', placeholder: 'e.g. Lisbon Photo Walkers' });
   const desc = el('textarea', { rows: 3, maxlength: '2000', placeholder: 'What is this community about?' });
   const cat = el('select', {}, ...(Object.keys(CATEGORY_LABELS) as Category[]).map((k) => el('option', { value: k, text: CATEGORY_LABELS[k] })));
   const hasLocation = el('input', { type: 'checkbox', checked: true });
-  const lat = el('input', { type: 'number', step: 'any', value: c.lat.toFixed(5), min: '-90', max: '90' });
-  const lon = el('input', { type: 'number', step: 'any', value: c.lng.toFixed(5), min: '-180', max: '180' });
+  const lat = el('input', { type: 'number', step: 'any', value: pos.lat.toFixed(5), min: '-90', max: '90' });
+  const lon = el('input', { type: 'number', step: 'any', value: pos.lng.toFixed(5), min: '-180', max: '180' });
+  const setPos = (p: LngLat) => { pos = p; lat.value = p.lat.toFixed(5); lon.value = p.lng.toFixed(5); map.showDraftPin(p, setPos); };
+  const fromInputs = () => { const la = Number(lat.value), lo = Number(lon.value); if (Number.isFinite(la) && Number.isFinite(lo)) setPos({ lat: la, lng: lo }); };
+  lat.addEventListener('change', fromInputs); lon.addEventListener('change', fromInputs);
+  setPos(pos);
   const locName = el('input', { type: 'text', maxlength: '120', placeholder: 'Place name (optional)' });
   const start = el('input', { type: 'date' });
   const end = el('input', { type: 'date' });
+  if (state.timeOn) { start.value = `${state.fromYear}-01-01`; end.value = `${state.toYear}-12-31`; } // match the time filter in use
   const expires = el('input', { type: 'date' });
   const vis = el('select', {}, el('option', { value: 'Public', text: 'Public: appears on the map' }), el('option', { value: 'Unlisted', text: 'Unlisted: only reachable by link' }), el('option', { value: 'Private', text: 'Private: members and invitees only' }));
   const access = el('select', {}, el('option', { value: 'Open', text: 'Open: anyone can join' }), el('option', { value: 'ApprovalRequired', text: 'Approval required' }), el('option', { value: 'InvitationOnly', text: 'Invitation only' }), el('option', { value: 'Verified', text: 'Verified (Nostr) members only' }));
   const pricing = el('select', {}, el('option', { value: 'Free', text: 'Free' }), el('option', { value: 'Paid', text: 'Paid (payments not in POC)' }));
   const price = el('input', { type: 'number', min: '1', step: '1', placeholder: 'Price (EUR)' });
   const error = el('p', { class: 'note error', hidden: true });
-  const locFields = el('div', { class: 'grid2' }, field('Latitude', lat), field('Longitude', lon));
-  hasLocation.addEventListener('change', () => { locFields.hidden = !hasLocation.checked; locName.hidden = !hasLocation.checked; });
+  const pickBtn = el('button', { class: 'btn ghost wide pick-btn', type: 'button', text: '📍 Pick the spot on the map', onclick: () => pickOnMap() });
+  const locFields = el('div', { class: 'loc-fields' }, pickBtn, el('div', { class: 'grid2' }, field('Latitude', lat), field('Longitude', lon)));
+  hasLocation.addEventListener('change', () => {
+    locFields.hidden = !hasLocation.checked; locName.hidden = !hasLocation.checked;
+    if (hasLocation.checked) setPos(pos); else map.clearDraftPin();
+  });
 
-  const close = modal('Create a community', el('form', { class: 'create', onsubmit: async (e) => {
+  // Hide the form, let the user tap the map, then bring the form back with the new spot.
+  const pickOnMap = () => {
+    const overlay = form.closest('.overlay') as HTMLElement | null;
+    if (overlay) overlay.hidden = true;
+    const done = () => { map.setPickMode(null); banner.remove(); if (overlay) overlay.hidden = false; };
+    const banner = el('div', { class: 'pick-banner', role: 'status' },
+      el('span', { text: '📍 Tap the map where your community is' }),
+      el('button', { class: 'btn small', type: 'button', text: 'Cancel', onclick: done }));
+    document.body.append(banner);
+    map.setPickMode((p) => { setPos(p); map.flyTo(p.lng, p.lat, Math.max(map.getViewport().zoom, 13)); done(); });
+  };
+
+  const form: HTMLFormElement = el('form', { class: 'create', onsubmit: async (e) => {
     e.preventDefault(); error.hidden = true;
     const dayEnd = expires.value ? new Date(expires.value + 'T23:59:59Z').toISOString() : null;
     try {
@@ -441,7 +494,8 @@ function openCreate() {
     el('div', { class: 'grid2' }, field('About period: from', start), field('About period: to', end)),
     field('Stops being active on (optional)', expires),
     field('Visibility', vis), field('Who can join', access), el('div', { class: 'grid2' }, field('Pricing', pricing), field('Price', price)),
-    el('button', { class: 'btn primary wide', type: 'submit', text: 'Create community' }), error));
+    el('button', { class: 'btn primary wide', type: 'submit', text: 'Create community' }), error);
+  const close = modal('Create a community', form, () => { map.setPickMode(null); map.clearDraftPin(); });
 }
 
 // ------------------------------------------------------------------ boot

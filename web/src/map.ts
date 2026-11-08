@@ -1,4 +1,4 @@
-import { Map as MapLibreMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type MapMouseEvent } from 'maplibre-gl';
+import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource, type MapMouseEvent } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Category, Feature, FeatureCollection } from './api';
@@ -10,6 +10,7 @@ export const CATEGORY_COLORS: Record<Category, string> = {
 };
 
 export interface Viewport { west: number; south: number; east: number; north: number; zoom: number }
+export interface LngLat { lng: number; lat: number }
 
 /**
  * Everything the app needs from a map. Mapbox GL JS (or the Flutter map) can replace MapLibre by
@@ -18,7 +19,13 @@ export interface Viewport { west: number; south: number; east: number; north: nu
 export interface MapAdapter {
   onViewportChange(cb: (v: Viewport) => void): void;
   onSelect(cb: (feature: Feature) => void): void;
-  onBackgroundClick(cb: () => void): void;
+  /** A click on empty map (not on a community). */
+  onBackgroundClick(cb: (at: LngLat) => void): void;
+  /** While set, every map click picks a location instead of selecting communities. */
+  setPickMode(cb: ((at: LngLat) => void) | null): void;
+  /** Draggable pin for a community being created. */
+  showDraftPin(at: LngLat, onMove: (at: LngLat) => void): void;
+  clearDraftPin(): void;
   setData(fc: FeatureCollection): void;
   setSelected(id: string | null): void;
   flyTo(lng: number, lat: number, zoom?: number): void;
@@ -38,7 +45,10 @@ export class MapLibreAdapter implements MapAdapter {
   private ready: Promise<void>;
   private pendingData: FeatureCollection = EMPTY;
   private selectCb: (f: Feature) => void = () => {};
-  private bgCb: () => void = () => {};
+  private bgCb: (at: LngLat) => void = () => {};
+  private pickCb: ((at: LngLat) => void) | null = null;
+  private draftPin: Marker | null = null;
+  private draftMove: (at: LngLat) => void = () => {};
   private viewCb: (v: Viewport) => void = () => {};
 
   constructor(container: HTMLElement, styleUrl: string, fontStack: string) {
@@ -87,12 +97,14 @@ export class MapLibreAdapter implements MapAdapter {
     });
 
     m.on('click', 'clusters', async (e: MapMouseEvent) => {
+      if (this.pickCb) return;
       const f = m.queryRenderedFeatures(e.point, { layers: ['clusters'] })[0];
       if (!f) return;
       const zoom = await (m.getSource(SOURCE) as GeoJSONSource).getClusterExpansionZoom(f.properties!.cluster_id as number);
       m.easeTo({ center: (f.geometry as unknown as { coordinates: [number, number] }).coordinates, zoom: zoom + 0.3, duration: 600 });
     });
     m.on('click', 'community-points', (e: MapMouseEvent) => {
+      if (this.pickCb) return;
       const f = m.queryRenderedFeatures(e.point, { layers: ['community-points'] })[0];
       if (!f) return;
       e.originalEvent.stopPropagation();
@@ -103,8 +115,9 @@ export class MapLibreAdapter implements MapAdapter {
       this.selectCb(feature);
     });
     m.on('click', (e: MapMouseEvent) => {
+      if (this.pickCb) { this.pickCb({ lng: e.lngLat.lng, lat: e.lngLat.lat }); return; }
       const hit = m.queryRenderedFeatures(e.point, { layers: ['community-points', 'clusters'] });
-      if (hit.length === 0) this.bgCb();
+      if (hit.length === 0) this.bgCb({ lng: e.lngLat.lng, lat: e.lngLat.lat });
     });
     for (const layer of ['clusters', 'community-points']) {
       m.on('mouseenter', layer, () => { m.getCanvas().style.cursor = 'pointer'; });
@@ -115,7 +128,26 @@ export class MapLibreAdapter implements MapAdapter {
 
   onViewportChange(cb: (v: Viewport) => void) { this.viewCb = cb; this.ready.then(() => cb(this.getViewport())); }
   onSelect(cb: (f: Feature) => void) { this.selectCb = cb; }
-  onBackgroundClick(cb: () => void) { this.bgCb = cb; }
+  onBackgroundClick(cb: (at: LngLat) => void) { this.bgCb = cb; }
+
+  setPickMode(cb: ((at: LngLat) => void) | null) {
+    this.pickCb = cb;
+    this.map.getCanvas().style.cursor = cb ? 'crosshair' : '';
+  }
+
+  showDraftPin(at: LngLat, onMove: (at: LngLat) => void) {
+    this.draftMove = onMove;
+    if (!this.draftPin) {
+      const node = document.createElement('div');
+      node.className = 'draft-pin';
+      node.setAttribute('aria-label', 'New community location');
+      const pin = new Marker({ element: node, draggable: true, anchor: 'bottom' });
+      pin.on('dragend', () => { const p = pin.getLngLat(); this.draftMove({ lng: p.lng, lat: p.lat }); });
+      this.draftPin = pin.setLngLat([at.lng, at.lat]).addTo(this.map);
+    } else this.draftPin.setLngLat([at.lng, at.lat]);
+  }
+
+  clearDraftPin() { this.draftPin?.remove(); this.draftPin = null; }
 
   setData(fc: FeatureCollection) {
     this.pendingData = fc;

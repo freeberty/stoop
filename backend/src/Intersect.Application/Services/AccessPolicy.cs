@@ -20,6 +20,7 @@ public static class AccessPolicy
     /// <summary>Can this viewer open the community details? Private communities do not leak existence.</summary>
     public static bool CanView(Community c, CommunityMember? m)
     {
+        if (c.Status == CommunityStatus.Archived) return false; // deleted by its owner
         if (c.Status == CommunityStatus.Draft) return IsAdmin(m);
         switch (c.Visibility)
         {
