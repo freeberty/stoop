@@ -4,6 +4,7 @@ import {
   type AccessMode, type Category, type CommunityDetails, type CommunitySummary, type Feature, type FeatureCollection, type Member, type User, type Visibility,
 } from './api';
 import { ChatPanel } from './chat';
+import { openNostrInfo } from './nostr-info';
 import { $, CATEGORY_LABELS, accessLabel, clear, debounce, el, formatContext, modal, toast } from './dom';
 import { CATEGORY_COLORS, MapLibreAdapter, type MapAdapter, type Viewport } from './map';
 
@@ -387,6 +388,7 @@ function openAuth() {
   close = modal('Welcome', el('div', { class: 'auth' },
     nostrBtn,
     el('p', { class: 'muted small', text: 'Your private key never leaves your signer. This site only receives a signature on a one-time challenge.' }),
+    el('button', { class: 'nx-link', type: 'button', text: 'ⓘ What is Nostr? How do I get a key?', onclick: openNostrInfo }),
     el('div', { class: 'or', text: 'or use email' }),
     el('form', { onsubmit: (e) => { e.preventDefault(); void submit(false); } }, email, password, name,
       el('div', { class: 'row' }, el('button', { class: 'btn primary', type: 'submit', text: 'Log in' }), el('button', { class: 'btn ghost', type: 'button', text: 'Create account', onclick: () => void submit(true) }))),

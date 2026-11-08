@@ -1,7 +1,13 @@
-# Intersect (POC)
+# Stoop (POC)
 
 Map-first community discovery. Communities may have a location, a context period ("what it is about"),
 or both, or neither (global). Members of a community share a server-managed group chat.
+
+The name comes from the front steps of city brownstones, where neighbours sit and talk.
+The code still uses the working name **Intersect** (`Intersect.Api`, `intersect-web`).
+
+**Live demo:** https://stoop.freeberty.com (API: https://stoop-api.freeberty.com, docs at `/docs`).
+The demo runs the in-memory store, so all data resets whenever the API restarts.
 
 > **Read `docs/LIMITATIONS.md` first.** It lists exactly what was verified and what was never compiled or run.
 
@@ -53,6 +59,50 @@ node scripts/e2e-demo.mjs            # API=http://127.0.0.1:5080 DOMAIN=localhos
   default, a pure C# BIP-340 implementation as fallback/test oracle). The web client supports NIP-07 only.
 * **Email + password** (PBKDF2-SHA256). Identities can be linked to one account.
 * A project-operated relay is a later phase and is not built.
+
+## Getting a Nostr key
+
+Stoop signs you in with a Nostr key held by a signer app (NIP-07). The site only receives a signature on a
+one-time challenge, never the key. The login screen has a **"What is Nostr?"** button with the same steps.
+
+**iPhone / iPad** (iOS 18 or newer, Safari)
+1. Install [Nostash](https://apps.apple.com/app/nostash/id6744309333) from the App Store (free).
+2. Open Settings → Apps → Safari → Extensions, turn on Nostash and allow it for the site.
+3. Open Nostash and create a new key, or import an existing one.
+4. Back up the private key (starts with `nsec`) in a password manager.
+5. Open https://stoop.freeberty.com in Safari, tap **Continue with Nostr** and approve.
+
+**Android** (Firefox; Chrome on Android cannot run extensions)
+1. Install [Firefox](https://play.google.com/store/apps/details?id=org.mozilla.firefox).
+2. In Firefox, open ⋮ → Extensions and add [nos2x-fox](https://addons.mozilla.org/android/addon/nos2x-fox/).
+3. Open the nos2x-fox settings and generate a new key, or paste an existing one.
+4. Back up the private key (starts with `nsec`) in a password manager.
+5. Open https://stoop.freeberty.com in Firefox, tap **Continue with Nostr** and approve.
+
+**Computer:** install [Alby](https://getalby.com) or [nos2x](https://github.com/fiatjaf/nos2x), create or import a key, then log in.
+
+Your private key is your account: nobody can reset it, so keep a backup and never paste it into a website.
+Signer apps that use NIP-46 or NIP-55 (Amber, nsec.app) are not supported yet.
+
+## Deployment
+
+Pushing to `main` deploys automatically with GitHub Actions:
+
+| Workflow | Runs when | Deploys to |
+|---|---|---|
+| `.github/workflows/deploy-api.yml` | `backend/**` changes | Fly app `stoop-api` (one machine, `fly deploy --ha=false`) |
+| `.github/workflows/deploy-web.yml` | `web/**` changes | Cloudflare Pages project `stoop`, built with `VITE_API_URL=https://stoop-api.freeberty.com` |
+
+Both can also be started by hand from the Actions tab. They need two repository secrets:
+
+* `FLY_API_TOKEN`: a deploy token for the app (`fly tokens create deploy -a stoop-api`).
+* `CLOUDFLARE_API_TOKEN`: an account token with **Cloudflare Pages: Edit** and no client IP filter
+  (GitHub runners use changing addresses).
+
+Hosting layout: `stoop.freeberty.com` is a Pages custom domain. `stoop-api.freeberty.com` is a proxied Cloudflare
+record pointing at the Fly app's IPv6 address, so browsers never connect to `*.fly.dev` directly (some mobile networks
+block it). API secrets on Fly: `Auth__JwtSecret`, `Auth__ExpectedDomain=stoop.freeberty.com`,
+`Cors__Origins__0=https://stoop.freeberty.com`, `Cors__Origins__1=https://stoop-dzp.pages.dev`.
 
 ## Rules worth knowing
 

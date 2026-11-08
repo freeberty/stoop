@@ -120,3 +120,32 @@ button { cursor: pointer; }
   .grid2 { grid-template-columns: 1fr; }
 }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* "What is Nostr?" explainer */
+.nx-link { align-self: center; background: none; border: 0; color: var(--accent); font-weight: 600; font-size: 0.9rem; padding: 4px 8px; cursor: pointer; }
+.nx-link:hover { text-decoration: underline; }
+.nx { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.nx a { color: var(--accent); font-weight: 600; }
+.nx-hero { display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: var(--radius);
+  background: linear-gradient(135deg, color-mix(in srgb, #8b5cf6 22%, transparent), color-mix(in srgb, var(--accent) 10%, transparent)); }
+.nx-badge { flex: none; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 1.6rem;
+  background: linear-gradient(135deg, #8b5cf6, var(--accent)); box-shadow: 0 6px 18px color-mix(in srgb, #8b5cf6 40%, transparent); }
+.nx-lead { margin: 0; line-height: 1.45; }
+.nx-features { display: grid; gap: 10px; }
+.nx-feature { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.nx-feature p { margin: 2px 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+.nx-icon { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.nx-h { margin: 4px 0 0; font-size: 1.05rem; }
+.nx-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.nx-tab { flex: 1; padding: 8px 6px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 600; cursor: pointer; }
+.nx-tab.active { background: var(--bg); color: var(--fg); box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15); }
+.nx-steps ol { list-style: none; counter-reset: step; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.nx-steps li { counter-increment: step; display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.nx-steps li::before { content: counter(step); flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 0.8rem; font-weight: 700; background: var(--accent); color: var(--accent-fg); margin-top: 1px; }
+.nx-steps code { font-size: 0.85em; padding: 1px 5px; border-radius: 5px; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.nx-steps .muted { margin-top: 8px; }
+.nx-warn { padding: 10px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4;
+  background: color-mix(in srgb, #f59e0b 14%, transparent); border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent); }
+.nx-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }

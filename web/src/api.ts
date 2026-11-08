@@ -88,7 +88,7 @@ declare global { interface Window { nostr?: Nip07 } }
 
 /** The private key never reaches this app: the browser extension signs the challenge event. */
 export async function loginWithNostr(): Promise<AuthResponse> {
-  if (!window.nostr) throw new ApiError(0, 'no_signer', 'No Nostr signer found. Install a NIP-07 extension such as Alby or nos2x.');
+  if (!window.nostr) throw new ApiError(0, 'no_signer', 'No Nostr signer found in this browser. Tap “What is Nostr?” below to set one up.');
   const publicKey = await window.nostr.getPublicKey();
   const challenge = await request<{ challenge: string; kind: number; domain: string }>('POST', '/api/v1/auth/nostr/challenge', { publicKey });
   const event = await window.nostr.signEvent({
