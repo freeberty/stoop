@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Intersect: discover communities on a map." />
+  <title>Intersect</title>
+</head>
+<body>
+  <div id="map" aria-label="Map of communities"></div>
+
+  <header class="topbar">
+    <div class="brand">Intersect</div>
+    <div class="searchbox">
+      <input id="search" type="search" placeholder="Search communities" autocomplete="off" aria-label="Search communities" />
+      <div id="search-results" class="results" hidden></div>
+    </div>
+    <div id="account" class="account"></div>
+  </header>
+
+  <section class="filters">
+    <div id="chips" class="chips" role="group" aria-label="Categories"></div>
+    <div class="filter-actions">
+      <button id="btn-time" class="chip" type="button">🕘 Any time</button>
+      <button id="btn-global" class="chip" type="button">🌍 Anywhere</button>
+    </div>
+    <div id="time-panel" class="panel" hidden></div>
+  </section>
+
+  <div id="status" class="status" role="status" hidden></div>
+  <button id="btn-locate" class="fab" type="button" title="Center map on my location" aria-label="Center map on my location">📍</button>
+
+  <aside id="preview" class="preview" hidden></aside>
+  <aside id="drawer" class="drawer" aria-label="Community details"></aside>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

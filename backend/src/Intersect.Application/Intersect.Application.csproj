@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Intersect</RootNamespace>
+    <AssemblyName>Intersect.Application</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Only the ASP.NET Core shared framework: no third-party packages in the domain/application layer. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

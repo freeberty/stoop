@@ -1,0 +1,13 @@
+{
+  "name": "intersect-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end demo of the POC scenario against a running API (uses nostr-tools as an independent Nostr implementation)",
+  "scripts": {
+    "e2e": "node e2e-demo.mjs"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.7",
+    "nostr-tools": "^2.10.0"
+  }
+}

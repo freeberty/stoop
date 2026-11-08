@@ -1,0 +1,57 @@
+# Local development stack: PostgreSQL + PostGIS, the API, and the web client.
+#   cp .env.example .env   (then edit the secrets)
+#   docker compose up --build
+# API: http://localhost:8080   (docs at /docs, health at /health)
+# Web: http://localhost:5173
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-intersect}
+      POSTGRES_USER: ${POSTGRES_USER:-intersect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-intersect} -d ${POSTGRES_DB:-intersect}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      Persistence__Provider: Postgres
+      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-intersect};Username=${POSTGRES_USER:-intersect};Password=${POSTGRES_PASSWORD}
+      Auth__JwtSecret: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env (min 32 chars)}
+      Auth__ExpectedDomain: ${AUTH_EXPECTED_DOMAIN:-localhost}
+      Cors__Origins__0: ${WEB_ORIGIN:-http://localhost:5173}
+      Seed__Enabled: ${SEED_ENABLED:-true}
+      RateLimiting__PermitPerMinute: ${RATE_LIMIT_PER_MINUTE:-600}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q healthy <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
+        VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
