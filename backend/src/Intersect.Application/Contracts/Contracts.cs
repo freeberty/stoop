@@ -87,7 +87,9 @@ public sealed record CommunityFeatureProperties(
     [property: JsonPropertyName("contextEndDate")] DateOnly? ContextEndDate,
     [property: JsonPropertyName("accessMode")] AccessMode AccessMode,
     [property: JsonPropertyName("pricingMode")] PricingMode PricingMode,
-    [property: JsonPropertyName("visibility")] Visibility Visibility);
+    [property: JsonPropertyName("visibility")] Visibility Visibility,
+    /// <summary>Short excerpt (at most 160 characters) for list cards.</summary>
+    [property: JsonPropertyName("description")] string Description);
 
 public sealed record GeoJsonFeature(
     [property: JsonPropertyName("type")] string Type,

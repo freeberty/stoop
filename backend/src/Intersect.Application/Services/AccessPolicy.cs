@@ -86,5 +86,11 @@ public static class Mappers
         c.Id.ToString(),
         new GeoJsonPoint("Point", [c.Longitude!.Value, c.Latitude!.Value]),
         new CommunityFeatureProperties(c.Id, c.Name, c.Slug, c.Category, c.MemberCount, c.LocationName,
-            c.ContextStartDate, c.ContextEndDate, c.AccessMode, c.PricingMode, c.Visibility));
+            c.ContextStartDate, c.ContextEndDate, c.AccessMode, c.PricingMode, c.Visibility, Excerpt(c.Description)));
+
+    private static string Excerpt(string? text, int max = 160)
+    {
+        var t = (text ?? "").Trim();
+        return t.Length <= max ? t : t[..(max - 1)].TrimEnd() + "…";
+    }
 }

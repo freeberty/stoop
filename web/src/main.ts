@@ -3,7 +3,9 @@ import {
   ApiError, api, loginWithNostr, setToken, getToken,
   type AccessMode, type Category, type CommunityDetails, type CommunitySummary, type Feature, type FeatureCollection, type Member, type User, type Visibility,
 } from './api';
+import { CATEGORY_ICONS, highlightCard, initSheet, isMobile, renderCard, type Snap } from './browse';
 import { ChatPanel } from './chat';
+import { activeCount, applyClient, defaultFilters, openFilters, serverParams, timeLabel, type Filters } from './filters';
 import { openNostrInfo } from './nostr-info';
 import { $, CATEGORY_LABELS, accessLabel, clear, debounce, el, formatContext, modal, toast } from './dom';
 import { CATEGORY_COLORS, MapLibreAdapter, type LngLat, type MapAdapter, type Viewport } from './map';
@@ -12,16 +14,11 @@ import { CATEGORY_COLORS, MapLibreAdapter, type LngLat, type MapAdapter, type Vi
 
 const STYLE_URL = (import.meta.env.VITE_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/liberty') as string;
 const FONT = (import.meta.env.VITE_MAP_FONT ?? 'Noto Sans Regular') as string;
-const YEAR_MIN = 1900;
-const YEAR_MAX = 2040;
+const PAGE = 40; // cards rendered per "show more"
 
 const state = {
   user: null as User | null,
-  category: null as Category | null,
-  timeOn: false,
-  fromYear: 1970,
-  toYear: 1979,
-  includeUndated: false,
+  f: defaultFilters() as Filters,
   selectedId: null as string | null,
 };
 
@@ -32,57 +29,130 @@ const chat = new ChatPanel();
 
 const cache = new Map<string, { at: number; fc: FeatureCollection }>();
 let inflight: AbortController | null = null;
-const statusPill = $('#status');
 
-function setStatus(text: string, kind: 'idle' | 'loading' | 'error' = 'idle', retry?: () => void) {
-  clear(statusPill);
-  statusPill.className = `status ${kind}`;
-  statusPill.append(el('span', { text }));
-  if (retry) statusPill.append(el('button', { class: 'link-btn', text: 'Retry', onclick: retry }));
-  statusPill.hidden = false;
+function viewportKey(f: Filters, v: Viewport) {
+  const q = serverParams(f);
+  q.set('west', v.west.toFixed(3)); q.set('south', v.south.toFixed(3));
+  q.set('east', v.east.toFixed(3)); q.set('north', v.north.toFixed(3)); q.set('zoom', String(v.zoom));
+  return { q, key: q.toString() + (getToken() ? '|u' : '|a') };
 }
 
-function filterParams(): URLSearchParams {
-  const q = new URLSearchParams();
-  if (state.category) q.set('category', state.category);
-  if (state.timeOn) {
-    q.set('from', `${state.fromYear}-01-01`);
-    q.set('to', `${state.toYear}-12-31`);
-    if (state.includeUndated) q.set('includeUndated', 'true');
-  }
-  return q;
+/** Fetches (or reuses) the communities for a viewport and filter set. */
+async function load(f: Filters, v: Viewport, force: boolean, signal?: AbortSignal): Promise<FeatureCollection> {
+  const { q, key } = viewportKey(f, v);
+  const hit = cache.get(key);
+  if (!force && hit && Date.now() - hit.at < 10_000) return hit.fc;
+  const fc = await api.viewport(q, signal);
+  cache.set(key, { at: Date.now(), fc });
+  if (cache.size > 40) cache.delete(cache.keys().next().value as string);
+  return fc;
 }
 
 async function refresh(v: Viewport = map.getViewport(), force = false) {
-  const q = filterParams();
-  q.set('west', v.west.toFixed(3)); q.set('south', v.south.toFixed(3));
-  q.set('east', v.east.toFixed(3)); q.set('north', v.north.toFixed(3)); q.set('zoom', String(v.zoom));
-  const key = q.toString() + (getToken() ? '|u' : '|a');
-  const hit = cache.get(key);
-  if (!force && hit && Date.now() - hit.at < 10_000) { show(hit.fc); return; }
-
   inflight?.abort();
   const controller = (inflight = new AbortController());
-  setStatus('Loading communities…', 'loading');
+  browse.classList.add('loading');
   try {
-    const fc = await api.viewport(q, controller.signal);
-    cache.set(key, { at: Date.now(), fc });
-    if (cache.size > 40) cache.delete(cache.keys().next().value as string);
-    show(fc);
+    show(await load(state.f, v, force, controller.signal));
   } catch (e) {
     if ((e as Error).name === 'AbortError') return;
-    setStatus(e instanceof ApiError ? e.message : 'Could not load communities.', 'error', () => void refresh(map.getViewport(), true));
-  }
-}
-
-function show(fc: FeatureCollection) {
-  map.setData(fc);
-  if (fc.count === 0) setStatus('No communities in this view. Zoom out or change the filters.');
-  else setStatus(`${fc.count}${fc.truncated ? '+' : ''} communit${fc.count === 1 ? 'y' : 'ies'} in view`);
+    showError(e instanceof ApiError ? e.message : 'Could not load communities.');
+  } finally { if (inflight === controller) browse.classList.remove('loading'); }
 }
 
 const refreshSoon = debounce((v: Viewport) => void refresh(v), 250);
 map.onViewportChange(refreshSoon);
+
+// ------------------------------------------------------------------ results list (left panel / bottom sheet)
+
+const browse = $('#browse');
+const list = $('#browse-list');
+const browseTitle = $('#browse-title');
+const browseSub = $('#browse-sub');
+let shown: Feature[] = [];
+let rendered = 0;
+
+const cardHandlers = {
+  open: (id: string) => void openCommunity(id, true),
+  hover: (id: string | null) => map.setHovered(id),
+};
+
+function show(fc: FeatureCollection) {
+  shown = applyClient(fc.features, state.f);
+  map.setData({ ...fc, features: shown, count: shown.length });
+  const n = shown.length;
+  browseTitle.textContent = n === 0 ? 'No communities here' : `${n}${fc.truncated ? '+' : ''} communit${n === 1 ? 'y' : 'ies'} in this area`;
+  const bits = [state.f.category ? CATEGORY_LABELS[state.f.category] : null, state.f.timeOn ? `about ${timeLabel(state.f)}` : null].filter(Boolean);
+  browseSub.textContent = bits.length ? bits.join(' · ') : 'Move the map to explore';
+  clear(list); rendered = 0;
+  if (n === 0) {
+    list.append(el('div', { class: 'browse-empty' },
+      el('p', { text: 'Try zooming out, moving the map, or removing some filters.' }),
+      (state.f.category || activeCount(state.f)) ? el('button', { class: 'btn', type: 'button', text: 'Clear filters', onclick: () => setFilters(defaultFilters()) }) : null));
+    return;
+  }
+  renderMore();
+}
+
+function renderMore() {
+  list.querySelector('.browse-more')?.remove();
+  const next = shown.slice(rendered, rendered + PAGE);
+  for (const f of next) list.append(renderCard(f.properties, cardHandlers));
+  rendered += next.length;
+  if (rendered < shown.length)
+    list.append(el('button', { class: 'btn browse-more', type: 'button', text: `Show ${Math.min(PAGE, shown.length - rendered)} more`, onclick: renderMore }));
+}
+
+function showError(message: string) {
+  browseTitle.textContent = 'Could not load communities';
+  browseSub.textContent = message;
+  clear(list);
+  list.append(el('div', { class: 'browse-empty' }, el('button', { class: 'btn', type: 'button', text: 'Try again', onclick: () => void refresh(map.getViewport(), true) })));
+}
+
+// Phones: the list is a bottom sheet over the map with a floating Map / List switch.
+const viewBtn = $<HTMLButtonElement>('#btn-view');
+const sheet = initSheet(browse, (s) => syncViewButton(s));
+function syncViewButton(s: Snap = sheet.get()) {
+  viewBtn.hidden = !isMobile() || s !== 'full'; // in list mode, a quick way back to the map
+  viewBtn.textContent = '🗺️ Map';
+  document.body.dataset.sheet = isMobile() ? s : '';
+}
+viewBtn.addEventListener('click', () => sheet.set('peek'));
+window.matchMedia('(max-width: 899px)').addEventListener('change', () => syncViewButton());
+syncViewButton();
+
+// ------------------------------------------------------------------ filters
+
+function setFilters(f: Filters) {
+  state.f = f;
+  renderCatbar();
+  const n = activeCount(f);
+  const badge = $('#filters-count');
+  badge.hidden = n === 0; badge.textContent = String(n);
+  $('#btn-filters').classList.toggle('active', n > 0);
+  void refresh(map.getViewport(), true);
+}
+
+$('#btn-filters').addEventListener('click', () => openFilters(state.f, {
+  count: async (draft) => applyClient((await load(draft, map.getViewport(), false)).features, draft).length,
+  apply: (f) => setFilters(f),
+}));
+
+// Category bar: icon + label, like a tab strip.
+const catbar = $('#catbar');
+function renderCatbar() {
+  clear(catbar);
+  const item = (cat: Category | null, icon: string, label: string) => {
+    const active = state.f.category === cat;
+    return el('button', { class: `cat ${active ? 'active' : ''}`, type: 'button', 'aria-pressed': String(active),
+      onclick: () => setFilters({ ...state.f, category: active && cat ? null : cat }) },
+      el('span', { class: 'cat-icon', 'aria-hidden': 'true', text: icon }), el('span', { class: 'cat-label', text: label }));
+  };
+  catbar.append(item(null, '🧭', 'All'));
+  for (const cat of Object.keys(CATEGORY_LABELS) as Category[]) catbar.append(item(cat, CATEGORY_ICONS[cat], CATEGORY_LABELS[cat]));
+}
+renderCatbar();
 
 // ------------------------------------------------------------------ search bar
 
@@ -106,66 +176,6 @@ const runSearch = debounce(async (text: string) => {
 searchInput.addEventListener('input', () => runSearch(searchInput.value));
 searchInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { results.hidden = true; searchInput.blur(); } });
 document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.searchbox')) results.hidden = true; });
-
-// ------------------------------------------------------------------ category chips
-
-const chips = $('#chips');
-function renderChips() {
-  clear(chips);
-  const mk = (label: string, cat: Category | null, color?: string) =>
-    el('button', { class: `chip ${state.category === cat ? 'active' : ''}`, 'aria-pressed': String(state.category === cat), onclick: () => { state.category = cat; renderChips(); void refresh(map.getViewport(), true); } },
-      color && el('span', { class: 'dot', style: `background:${color}` }), label);
-  chips.append(mk('All', null));
-  for (const cat of Object.keys(CATEGORY_LABELS) as Category[]) chips.append(mk(CATEGORY_LABELS[cat], cat, CATEGORY_COLORS[cat]));
-}
-renderChips();
-
-// ------------------------------------------------------------------ time filter (context dates)
-
-const timePanel = $('#time-panel');
-const timeBtn = $<HTMLButtonElement>('#btn-time');
-
-function renderTime() {
-  clear(timePanel);
-  const label = el('div', { class: 'time-label' });
-  const update = () => {
-    label.textContent = state.timeOn
-      ? `Communities about ${state.fromYear === state.toYear ? state.fromYear : `${state.fromYear} – ${state.toYear}`}`
-      : 'Showing every period';
-    timeBtn.classList.toggle('active', state.timeOn);
-    timeBtn.textContent = state.timeOn ? `🕘 ${state.fromYear}–${state.toYear}` : '🕘 Any time';
-  };
-  const commit = debounce(() => void refresh(map.getViewport(), true), 200);
-  const range = (get: () => number, set: (v: number) => void) => el('input', {
-    type: 'range', min: String(YEAR_MIN), max: String(YEAR_MAX), step: '1', value: String(get()), disabled: !state.timeOn,
-    oninput: (e) => { set(Number((e.target as HTMLInputElement).value)); if (state.fromYear > state.toYear) { state.fromYear = state.toYear = get(); renderTime(); } update(); commit(); },
-  });
-
-  const toggle = el('input', { type: 'checkbox', checked: state.timeOn, onchange: (e) => { state.timeOn = (e.target as HTMLInputElement).checked; renderTime(); void refresh(map.getViewport(), true); } });
-  const presets = el('div', { class: 'preset-row' });
-  const preset = (text: string, from: number, to: number) => presets.append(el('button', { class: 'chip small', text, onclick: () => { state.timeOn = true; state.fromYear = from; state.toYear = to; renderTime(); void refresh(map.getViewport(), true); } }));
-  const nowYear = new Date().getFullYear();
-  preset('1970s', 1970, 1979); preset('1990s', 1990, 1999); preset('2020', 2020, 2020); preset('This year', nowYear, nowYear); preset('Future', nowYear + 1, YEAR_MAX);
-
-  timePanel.append(
-    el('label', { class: 'switch-row' }, toggle, el('span', { text: 'Filter by period the community is about' })),
-    label,
-    el('div', { class: 'range-row' }, el('span', { text: 'From' }), range(() => state.fromYear, (v) => (state.fromYear = v)), el('output', { text: String(state.fromYear) })),
-    el('div', { class: 'range-row' }, el('span', { text: 'To' }), range(() => state.toYear, (v) => (state.toYear = v)), el('output', { text: String(state.toYear) })),
-    presets,
-    el('label', { class: 'switch-row' },
-      el('input', { type: 'checkbox', checked: state.includeUndated, disabled: !state.timeOn, onchange: (e) => { state.includeUndated = (e.target as HTMLInputElement).checked; void refresh(map.getViewport(), true); } }),
-      el('span', { text: 'Include communities with no dates' })));
-  update();
-}
-renderTime();
-timeBtn.addEventListener('click', () => { timePanel.hidden = !timePanel.hidden; });
-
-// Keep the slider outputs in sync while dragging.
-timePanel.addEventListener('input', (e) => {
-  const input = e.target as HTMLInputElement;
-  if (input.type === 'range') (input.parentElement?.querySelector('output') as HTMLOutputElement).value = input.value;
-});
 
 // ------------------------------------------------------------------ preview card + selection
 
@@ -191,7 +201,7 @@ function showPreview(f: Feature) {
 }
 
 function clearSelection() { state.selectedId = null; map.setSelected(null); map.clearDraftPin(); preview.hidden = true; }
-map.onSelect(showPreview);
+map.onSelect((f) => { showPreview(f); highlightCard(list, f.properties.id); if (isMobile() && sheet.get() === 'full') sheet.set('half'); });
 // Tapping empty map closes an open card; otherwise it drops a pin you can turn into a community.
 map.onBackgroundClick((at) => {
   if (drawer.classList.contains('open')) return;
@@ -351,7 +361,7 @@ $('#btn-global').addEventListener('click', async () => {
   const list = el('div', { class: 'list' }, el('p', { class: 'muted', text: 'Loading…' }));
   modal('Communities without a location', el('div', {}, el('p', { class: 'muted', text: 'Interest-based communities that belong to everyone, not to a place on the map.' }), list));
   try {
-    const q = filterParams(); q.set('take', '50');
+    const q = serverParams(state.f); q.set('take', '50');
     const { items } = await api.global(q);
     clear(list);
     if (items.length === 0) list.append(el('p', { class: 'muted', text: 'Nothing matches the current filters.' }));
@@ -445,7 +455,7 @@ function openCreate(at?: LngLat) {
   const locName = el('input', { type: 'text', maxlength: '120', placeholder: 'Place name (optional)' });
   const start = el('input', { type: 'date' });
   const end = el('input', { type: 'date' });
-  if (state.timeOn) { start.value = `${state.fromYear}-01-01`; end.value = `${state.toYear}-12-31`; } // match the time filter in use
+  if (state.f.timeOn) { start.value = `${state.f.fromYear}-01-01`; end.value = `${state.f.toYear}-12-31`; } // match the time filter in use
   const expires = el('input', { type: 'date' });
   const vis = el('select', {}, el('option', { value: 'Public', text: 'Public: appears on the map' }), el('option', { value: 'Unlisted', text: 'Unlisted: only reachable by link' }), el('option', { value: 'Private', text: 'Private: members and invitees only' }));
   const access = el('select', {}, el('option', { value: 'Open', text: 'Open: anyone can join' }), el('option', { value: 'ApprovalRequired', text: 'Approval required' }), el('option', { value: 'InvitationOnly', text: 'Invitation only' }), el('option', { value: 'Verified', text: 'Verified (Nostr) members only' }));

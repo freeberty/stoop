@@ -28,6 +28,8 @@ export interface MapAdapter {
   clearDraftPin(): void;
   setData(fc: FeatureCollection): void;
   setSelected(id: string | null): void;
+  /** Emphasise a community while its list card is hovered. */
+  setHovered(id: string | null): void;
   flyTo(lng: number, lat: number, zoom?: number): void;
   center(): { lng: number; lat: number };
   getViewport(): Viewport;
@@ -92,6 +94,14 @@ export class MapLibreAdapter implements MapAdapter {
       },
     });
     m.addLayer({
+      id: 'community-hover', type: 'circle', source: SOURCE, filter: ['==', ['get', 'id'], ''],
+      paint: {
+        'circle-color': colorMatch as never,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 10, 16, 16],
+        'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff',
+      },
+    });
+    m.addLayer({
       id: 'community-selected', type: 'circle', source: SOURCE, filter: ['==', ['get', 'id'], ''],
       paint: { 'circle-color': 'rgba(0,0,0,0)', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 13, 16, 20], 'circle-stroke-width': 4, 'circle-stroke-color': '#0f172a' },
     });
@@ -152,6 +162,10 @@ export class MapLibreAdapter implements MapAdapter {
   setData(fc: FeatureCollection) {
     this.pendingData = fc;
     this.ready.then(() => (this.map.getSource(SOURCE) as GeoJSONSource).setData(fc as never));
+  }
+
+  setHovered(id: string | null) {
+    this.ready.then(() => this.map.setFilter('community-hover', ['==', ['get', 'id'], id ?? '']));
   }
 
   setSelected(id: string | null) {

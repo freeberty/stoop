@@ -24,6 +24,8 @@ export interface CommunityDetails {
 export interface FeatureProps {
   id: string; name: string; slug: string; category: Category; memberCount: number; locationName: string | null;
   contextStartDate: string | null; contextEndDate: string | null; accessMode: AccessMode; pricingMode: PricingMode; visibility: Visibility;
+  /** Short excerpt; older API versions may omit it. */
+  description?: string;
 }
 export interface Feature { type: 'Feature'; id: string; geometry: { type: 'Point'; coordinates: [number, number] }; properties: FeatureProps }
 export interface FeatureCollection { type: 'FeatureCollection'; features: Feature[]; count: number; truncated: boolean }

@@ -7,28 +7,36 @@
   <title>Intersect</title>
 </head>
 <body>
-  <div id="map" aria-label="Map of communities"></div>
-
   <header class="topbar">
     <div class="brand">Intersect</div>
     <div class="searchbox">
       <input id="search" type="search" placeholder="Search communities" autocomplete="off" aria-label="Search communities" />
       <div id="search-results" class="results" hidden></div>
     </div>
+    <button id="btn-filters" class="filters-btn" type="button" aria-label="Filters">
+      <span aria-hidden="true">⚙️</span><span class="filters-label">Filters</span><span id="filters-count" class="filters-count" hidden></span>
+    </button>
     <div id="account" class="account"></div>
   </header>
 
-  <section class="filters">
-    <div id="chips" class="chips" role="group" aria-label="Categories"></div>
-    <div class="filter-actions">
-      <button id="btn-time" class="chip" type="button">🕘 Any time</button>
-      <button id="btn-global" class="chip" type="button">🌍 Anywhere</button>
-    </div>
-    <div id="time-panel" class="panel" hidden></div>
-  </section>
+  <nav id="catbar" class="catbar" aria-label="Categories"></nav>
 
-  <div id="status" class="status" role="status" hidden></div>
-  <button id="btn-locate" class="fab" type="button" title="Center map on my location" aria-label="Center map on my location">📍</button>
+  <main class="stage">
+    <aside id="browse" class="browse" data-snap="half" aria-label="Communities in this area">
+      <div class="sheet-handle" aria-hidden="true"><span></span></div>
+      <div class="browse-head">
+        <div>
+          <h2 id="browse-title">Loading communities…</h2>
+          <p id="browse-sub" class="muted small"></p>
+        </div>
+        <button id="btn-global" class="btn small ghost" type="button">🌍 Anywhere</button>
+      </div>
+      <div id="browse-list" class="browse-grid" role="list"></div>
+    </aside>
+    <div id="map" aria-label="Map of communities"></div>
+    <button id="btn-locate" class="fab" type="button" title="Center map on my location" aria-label="Center map on my location">📍</button>
+    <button id="btn-view" class="view-toggle" type="button" hidden></button>
+  </main>
 
   <aside id="preview" class="preview" hidden></aside>
   <aside id="drawer" class="drawer" aria-label="Community details"></aside>
