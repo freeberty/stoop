@@ -92,7 +92,15 @@ builder.Services.AddRateLimiter(o =>
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     o.OnRejected = (ctx, _) => new ValueTask(ProblemDetailsMiddleware.WriteProblemAsync(ctx.HttpContext,
         StatusCodes.Status429TooManyRequests, "rate_limited", "RateLimited", "Too many requests. Slow down and retry shortly.", null));
-    static string Key(HttpContext c) => c.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    // Behind Cloudflare and Fly the socket address is the proxy's, so every visitor would share one bucket.
+    // Prefer the client IP the proxies forward: CF-Connecting-IP (Cloudflare), then Fly-Client-IP (set by Fly's edge).
+    static string Key(HttpContext c)
+    {
+        var h = c.Request.Headers;
+        var ip = h["CF-Connecting-IP"].ToString();
+        if (string.IsNullOrWhiteSpace(ip)) ip = h["Fly-Client-IP"].ToString();
+        return string.IsNullOrWhiteSpace(ip) ? c.Connection.RemoteIpAddress?.ToString() ?? "unknown" : ip.Trim();
+    }
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(c => RateLimitPartition.GetSlidingWindowLimiter(
         Key(c), _ => new SlidingWindowRateLimiterOptions { PermitLimit = permit, Window = TimeSpan.FromMinutes(1), SegmentsPerWindow = 6, QueueLimit = 0 }));
     o.AddPolicy("auth", c => RateLimitPartition.GetFixedWindowLimiter(
