@@ -203,7 +203,7 @@ function showPinCard(at: LngLat) {
   clearSelection();
   let pos = at;
   map.showDraftPin(pos, (p) => { pos = p; });
-  preview.hidden = false;
+  clear(preview); preview.hidden = false;
   preview.append(
     el('button', { class: 'icon-btn close', 'aria-label': 'Remove pin', text: '✕', onclick: clearSelection }),
     el('div', { class: 'pin-card-head' }, el('span', { class: 'pin-card-icon', 'aria-hidden': 'true', text: '📍' }), el('h3', { text: 'Start a community here?' })),
