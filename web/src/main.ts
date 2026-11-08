@@ -3,7 +3,9 @@ import {
   ApiError, api, loginWithNostr, setToken, getToken,
   type AccessMode, type Category, type CommunityDetails, type CommunitySummary, type Feature, type FeatureCollection, type Member, type User, type Visibility,
 } from './api';
-import { CATEGORY_ICONS, highlightCard, initSheet, isMobile, renderCard, type Snap } from './browse';
+import { highlightCard, initSheet, isMobile, renderCard, type Snap } from './browse';
+import { CATEGORY_ICON, I, hydrateIcons, icon } from './icons';
+import '@fontsource-variable/plus-jakarta-sans';
 import { ChatPanel } from './chat';
 import { activeCount, applyClient, defaultFilters, openFilters, serverParams, timeLabel, type Filters } from './filters';
 import { openNostrInfo } from './nostr-info';
@@ -115,7 +117,7 @@ const viewBtn = $<HTMLButtonElement>('#btn-view');
 const sheet = initSheet(browse, (s) => syncViewButton(s));
 function syncViewButton(s: Snap = sheet.get()) {
   viewBtn.hidden = !isMobile() || s !== 'full'; // in list mode, a quick way back to the map
-  viewBtn.textContent = '🗺️ Map';
+  viewBtn.replaceChildren(icon(I.map, { size: 18 }), 'Map');
   document.body.dataset.sheet = isMobile() ? s : '';
 }
 viewBtn.addEventListener('click', () => sheet.set('peek'));
@@ -143,14 +145,14 @@ $('#btn-filters').addEventListener('click', () => openFilters(state.f, {
 const catbar = $('#catbar');
 function renderCatbar() {
   clear(catbar);
-  const item = (cat: Category | null, icon: string, label: string) => {
+  const item = (cat: Category | null, node: import('lucide').IconNode, label: string) => {
     const active = state.f.category === cat;
     return el('button', { class: `cat ${active ? 'active' : ''}`, type: 'button', 'aria-pressed': String(active),
       onclick: () => setFilters({ ...state.f, category: active && cat ? null : cat }) },
-      el('span', { class: 'cat-icon', 'aria-hidden': 'true', text: icon }), el('span', { class: 'cat-label', text: label }));
+      el('span', { class: 'cat-icon' }, icon(node, { size: 22, stroke: 1.75 })), el('span', { class: 'cat-label', text: label }));
   };
-  catbar.append(item(null, '🧭', 'All'));
-  for (const cat of Object.keys(CATEGORY_LABELS) as Category[]) catbar.append(item(cat, CATEGORY_ICONS[cat], CATEGORY_LABELS[cat]));
+  catbar.append(item(null, I.compass, 'All'));
+  for (const cat of Object.keys(CATEGORY_LABELS) as Category[]) catbar.append(item(cat, CATEGORY_ICON[cat], CATEGORY_LABELS[cat]));
 }
 renderCatbar();
 
@@ -177,6 +179,11 @@ searchInput.addEventListener('input', () => runSearch(searchInput.value));
 searchInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { results.hidden = true; searchInput.blur(); } });
 document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.searchbox')) results.hidden = true; });
 
+/** A muted line with a leading icon (place, period, members). */
+const meta = (node: import('lucide').IconNode, text: string) => el('p', { class: 'meta' }, icon(node, { size: 16 }), el('span', { text }));
+
+hydrateIcons();
+
 // ------------------------------------------------------------------ preview card + selection
 
 const preview = $('#preview');
@@ -191,11 +198,12 @@ function showPreview(f: Feature) {
   state.selectedId = p.id; map.setSelected(p.id);
   clear(preview); preview.hidden = false;
   preview.append(
-    el('button', { class: 'icon-btn close', 'aria-label': 'Close preview', text: '✕', onclick: clearSelection }),
+    el('button', { class: 'icon-btn close', 'aria-label': 'Close preview', onclick: clearSelection }, icon(I.close, { size: 20 })),
     categoryPill(p.category),
     el('h3', { text: p.name }),
-    el('p', { class: 'muted', text: `📍 ${p.locationName ?? 'Location not set'}` }),
-    el('p', { class: 'muted', text: `🕘 ${formatContext(p.contextStartDate, p.contextEndDate)} · 👥 ${p.memberCount}` }),
+    meta(I.pin, p.locationName ?? 'Location not set'),
+    meta(I.calendar, formatContext(p.contextStartDate, p.contextEndDate)),
+    meta(I.users, `${p.memberCount} member${p.memberCount === 1 ? '' : 's'}`),
     el('div', { class: 'badges' }, ...accessLabel(p).map((t) => el('span', { class: 'badge', text: t }))),
     el('button', { class: 'btn primary wide', text: 'View community', onclick: () => void openCommunity(p.id, false) }));
 }
@@ -215,11 +223,11 @@ function showPinCard(at: LngLat) {
   map.showDraftPin(pos, (p) => { pos = p; });
   clear(preview); preview.hidden = false;
   preview.append(
-    el('button', { class: 'icon-btn close', 'aria-label': 'Remove pin', text: '✕', onclick: clearSelection }),
-    el('div', { class: 'pin-card-head' }, el('span', { class: 'pin-card-icon', 'aria-hidden': 'true', text: '📍' }), el('h3', { text: 'Start a community here?' })),
+    el('button', { class: 'icon-btn close', 'aria-label': 'Remove pin', onclick: clearSelection }, icon(I.close, { size: 20 })),
+    el('div', { class: 'pin-card-head' }, el('span', { class: 'pin-card-icon' }, icon(I.pin, { size: 22 })), el('h3', { text: 'Start a community here?' })),
     el('p', { class: 'muted small', text: 'Drag the pin to fine-tune the spot. You can set the dates it is about in the next step.' }),
     state.user
-      ? el('button', { class: 'btn primary wide', text: '＋ Create community here', onclick: () => { preview.hidden = true; openCreate(pos); } })
+      ? el('button', { class: 'btn primary wide', onclick: () => { preview.hidden = true; openCreate(pos); } }, icon(I.plus), 'Create community here')
       : el('button', { class: 'btn primary wide', text: 'Log in to create a community', onclick: openAuth }));
 }
 
@@ -273,7 +281,7 @@ async function renderDrawer() {
 
   drawer.append(
     el('div', { class: 'drawer-head' },
-      el('div', {}, el('button', { class: 'back-btn', text: '← Back to map', onclick: closeDrawer }), el('div', {}, categoryPill(c.category)), el('h2', { text: c.name }))),
+      el('div', {}, el('button', { class: 'back-btn', onclick: closeDrawer }, icon(I.arrowLeft), 'Back to map'), el('div', {}, categoryPill(c.category)), el('h2', { text: c.name }))),
     tabs);
 
   const body = el('div', { class: 'drawer-body' });
@@ -290,9 +298,10 @@ async function renderDrawer() {
   if (activeTab === 'manage') { await renderManage(body, c.id); return; }
 
   body.append(
-    el('p', { class: 'muted', text: `📍 ${c.locationName ?? 'Anywhere in the world'}` }),
-    el('p', { class: 'muted', text: `🕘 ${formatContext(c.contextStartDate, c.contextEndDate)}   ·   👥 ${c.memberCount} member${c.memberCount === 1 ? '' : 's'}` }),
-    c.expiresAt ? el('p', { class: 'muted', text: `⏳ Active until ${new Date(c.expiresAt).toLocaleDateString()}` }) : '',
+    meta(I.pin, c.locationName ?? 'Anywhere in the world'),
+    meta(I.calendar, formatContext(c.contextStartDate, c.contextEndDate)),
+    meta(I.users, `${c.memberCount} member${c.memberCount === 1 ? '' : 's'}`),
+    c.expiresAt ? el('p', { class: 'muted', text: `Active until ${new Date(c.expiresAt).toLocaleDateString()}` }) : '',
     el('div', { class: 'badges' }, ...accessLabel(c).map((t) => el('span', { class: 'badge', text: t }))),
     el('p', { class: 'desc', text: c.description || 'No description yet.' }),
     d.priceAmount ? el('p', { class: 'price', text: `${d.priceAmount} ${d.priceCurrency ?? ''} per period. Payments are not part of this proof of concept.` }) : '',
@@ -308,10 +317,10 @@ function actionsFor(d: CommunityDetails): Node[] {
   if (!state.user) return [el('button', { class: 'btn primary wide', text: 'Log in to join', onclick: openAuth })];
   switch (st) {
     case 'Active':
-      return [el('button', { class: 'btn primary wide', text: '💬 Open chat', onclick: () => { activeTab = 'chat'; void renderDrawer(); } }),
+      return [el('button', { class: 'btn primary wide', onclick: () => { activeTab = 'chat'; void renderDrawer(); } }, icon(I.chat), 'Open chat'),
         d.myMembership!.role !== 'Owner' && el('button', { class: 'btn ghost wide', text: 'Leave community', onclick: run(() => api.leave(c.id), 'You left the community') })].filter(Boolean) as Node[];
     case 'Pending': return [el('div', { class: 'note', text: '⏳ Your request is waiting for an administrator.' })];
-    case 'AwaitingPayment': return [el('div', { class: 'note', text: '💳 Payment is required to unlock this community (not available in the POC).' })];
+    case 'AwaitingPayment': return [el('div', { class: 'note', text: 'Payment is required to unlock this community (not available in the POC).' })];
     case 'Banned': return [el('div', { class: 'note error', text: 'You cannot join this community.' })];
     case 'Invited': return [el('button', { class: 'btn primary wide', text: 'Accept invitation', onclick: run(() => api.join(c.id), 'Welcome!') })];
   }
@@ -320,7 +329,7 @@ function actionsFor(d: CommunityDetails): Node[] {
       return [el('button', { class: 'btn primary wide', text: c.accessMode === 'Verified' ? 'Join (Nostr-verified members)' : 'Join', onclick: run(() => api.join(c.id), 'Joined!') })];
     case 'ApprovalRequired':
       return [el('button', { class: 'btn primary wide', text: 'Request access', onclick: run(() => api.requestAccess(c.id), 'Request sent') })];
-    default: return [el('div', { class: 'note', text: '✉️ Invitation only.' })];
+    default: return [el('div', { class: 'note' }, icon(I.mail), ' Invitation only.')];
   }
 }
 
@@ -392,7 +401,7 @@ function renderAccount() {
   clear(accountSlot);
   if (state.user) {
     accountSlot.append(
-      el('button', { class: 'btn primary new-btn', title: 'Create a community', text: '＋ New', onclick: () => openCreate() }),
+      el('button', { class: 'btn primary new-btn', title: 'Create a community', onclick: () => openCreate() }, icon(I.plus), el('span', { class: 'new-label', text: 'New' })),
       el('button', { class: 'avatar', title: `${state.user.displayName} (click to log out)`, text: state.user.displayName.slice(0, 1).toUpperCase(), onclick: () => { if (confirm('Log out?')) logout(); } }));
   } else accountSlot.append(el('button', { class: 'btn primary', text: 'Log in', onclick: openAuth }));
 }
@@ -411,10 +420,10 @@ function openAuth() {
   const error = el('p', { class: 'note error', hidden: true });
   const fail = (e: unknown) => { error.hidden = false; error.textContent = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.'; };
 
-  const nostrBtn = el('button', { class: 'btn primary wide', text: '🔑 Continue with Nostr', onclick: async () => {
+  const nostrBtn = el('button', { class: 'btn primary wide', onclick: async () => {
     error.hidden = true; nostrBtn.disabled = true;
     try { const r = await loginWithNostr(); close(); await onAuthenticated(r.token, r.user); } catch (e) { fail(e); } finally { nostrBtn.disabled = false; }
-  } });
+  } }, icon(I.key), 'Continue with Nostr');
 
   const email = el('input', { type: 'email', placeholder: 'Email', autocomplete: 'email', required: true });
   const password = el('input', { type: 'password', placeholder: 'Password (min 10 characters)', autocomplete: 'current-password', required: true });
@@ -430,7 +439,7 @@ function openAuth() {
   close = modal('Welcome', el('div', { class: 'auth' },
     nostrBtn,
     el('p', { class: 'muted small', text: 'Your private key never leaves your signer. This site only receives a signature on a one-time challenge.' }),
-    el('button', { class: 'nx-link', type: 'button', text: 'ⓘ What is Nostr? How do I get a key?', onclick: openNostrInfo }),
+    el('button', { class: 'nx-link', type: 'button', onclick: openNostrInfo }, icon(I.info, { size: 16 }), 'What is Nostr? How do I get a key?'),
     el('div', { class: 'or', text: 'or use email' }),
     el('form', { onsubmit: (e) => { e.preventDefault(); void submit(false); } }, email, password, name,
       el('div', { class: 'row' }, el('button', { class: 'btn primary', type: 'submit', text: 'Log in' }), el('button', { class: 'btn ghost', type: 'button', text: 'Create account', onclick: () => void submit(true) }))),
@@ -462,7 +471,7 @@ function openCreate(at?: LngLat) {
   const pricing = el('select', {}, el('option', { value: 'Free', text: 'Free' }), el('option', { value: 'Paid', text: 'Paid (payments not in POC)' }));
   const price = el('input', { type: 'number', min: '1', step: '1', placeholder: 'Price (EUR)' });
   const error = el('p', { class: 'note error', hidden: true });
-  const pickBtn = el('button', { class: 'btn ghost wide pick-btn', type: 'button', text: '📍 Pick the spot on the map', onclick: () => pickOnMap() });
+  const pickBtn = el('button', { class: 'btn ghost wide pick-btn', type: 'button', onclick: () => pickOnMap() }, icon(I.pin), 'Pick the spot on the map');
   const locFields = el('div', { class: 'loc-fields' }, pickBtn, el('div', { class: 'grid2' }, field('Latitude', lat), field('Longitude', lon)));
   hasLocation.addEventListener('change', () => {
     locFields.hidden = !hasLocation.checked; locName.hidden = !hasLocation.checked;
@@ -475,7 +484,7 @@ function openCreate(at?: LngLat) {
     if (overlay) overlay.hidden = true;
     const done = () => { map.setPickMode(null); banner.remove(); if (overlay) overlay.hidden = false; };
     const banner = el('div', { class: 'pick-banner', role: 'status' },
-      el('span', { text: '📍 Tap the map where your community is' }),
+      el('span', { class: 'pick-text' }, icon(I.pin), 'Tap the map where your community is'),
       el('button', { class: 'btn small', type: 'button', text: 'Cancel', onclick: done }));
     document.body.append(banner);
     map.setPickMode((p) => { setPos(p); map.flyTo(p.lng, p.lat, Math.max(map.getViewport().zoom, 13)); done(); });

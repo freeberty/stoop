@@ -14,7 +14,7 @@
       <div id="search-results" class="results" hidden></div>
     </div>
     <button id="btn-filters" class="filters-btn" type="button" aria-label="Filters">
-      <span aria-hidden="true">⚙️</span><span class="filters-label">Filters</span><span id="filters-count" class="filters-count" hidden></span>
+      <span data-icon="filters"></span><span class="filters-label">Filters</span><span id="filters-count" class="filters-count" hidden></span>
     </button>
     <div id="account" class="account"></div>
   </header>
@@ -29,12 +29,12 @@
           <h2 id="browse-title">Loading communities…</h2>
           <p id="browse-sub" class="muted small"></p>
         </div>
-        <button id="btn-global" class="btn small ghost" type="button">🌍 Anywhere</button>
+        <button id="btn-global" class="btn small ghost" type="button"><span data-icon="globe" data-size="16"></span>Anywhere</button>
       </div>
       <div id="browse-list" class="browse-grid" role="list"></div>
     </aside>
     <div id="map" aria-label="Map of communities"></div>
-    <button id="btn-locate" class="fab" type="button" title="Center map on my location" aria-label="Center map on my location">📍</button>
+    <button id="btn-locate" class="fab" type="button" title="Center map on my location" aria-label="Center map on my location"><span data-icon="locate" data-size="20"></span></button>
     <button id="btn-view" class="view-toggle" type="button" hidden></button>
   </main>
 

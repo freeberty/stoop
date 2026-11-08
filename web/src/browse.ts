@@ -1,12 +1,8 @@
-import type { Category, FeatureProps } from './api';
+import type { FeatureProps } from './api';
 import { CATEGORY_LABELS, el, formatContext } from './dom';
+import { CATEGORY_ICON, I, icon } from './icons';
 import { CATEGORY_COLORS } from './map';
 
-export const CATEGORY_ICONS: Record<Category, string> = {
-  DigitalNomads: '💻', Alumni: '🎓', Conference: '🎤', Photography: '📷', Gaming: '🎮',
-  Technology: '💡', Arts: '🎨', Music: '🎵', Sports: '⚽', Outdoors: '🏕️', Food: '🍜',
-  Travel: '✈️', History: '🏛️', Social: '🥂', Other: '✨',
-};
 
 const ACCESS_TEXT: Record<FeatureProps['accessMode'], string> = {
   Open: 'Open to all', ApprovalRequired: 'Approval required', InvitationOnly: 'Invitation only', Verified: 'Verified members',
@@ -19,13 +15,13 @@ export function renderCard(p: FeatureProps, h: CardHandlers): HTMLElement {
   const color = CATEGORY_COLORS[p.category];
   const card = el('article', { class: 'ccard', role: 'listitem', tabindex: '0', 'data-id': p.id, style: `--c:${color}` },
     el('div', { class: 'ccard-cover', 'aria-hidden': 'true' },
-      el('span', { class: 'ccard-icon', text: CATEGORY_ICONS[p.category] }),
+      el('span', { class: 'ccard-icon' }, icon(CATEGORY_ICON[p.category], { size: 56, stroke: 1.5 })),
       el('span', { class: 'ccard-cat', text: CATEGORY_LABELS[p.category] }),
       p.pricingMode === 'Paid' ? el('span', { class: 'ccard-flag', text: 'Paid' }) : null),
     el('div', { class: 'ccard-body' },
       el('div', { class: 'ccard-top' },
         el('h3', { text: p.name }),
-        el('span', { class: 'ccard-members', title: 'Members', text: `👥 ${p.memberCount}` })),
+        el('span', { class: 'ccard-members', title: 'Members' }, icon(I.users, { size: 15 }), String(p.memberCount))),
       el('p', { class: 'ccard-line', text: p.locationName ?? 'Location on map' }),
       el('p', { class: 'ccard-line', text: formatContext(p.contextStartDate, p.contextEndDate) }),
       p.description ? el('p', { class: 'ccard-desc', text: p.description }) : null,

@@ -2,7 +2,7 @@
   --bg: #ffffff; --fg: #0f172a; --muted: #64748b; --line: #e2e8f0; --accent: #4f46e5; --accent-fg: #fff;
   --danger: #dc2626; --panel: rgba(255, 255, 255, 0.96); --shadow: 0 6px 24px rgba(15, 23, 42, 0.18);
   --radius: 14px; --gutter: 12px; --top-h: 64px; --cat-h: 66px; --head-h: calc(var(--top-h) + var(--cat-h)); --list-w: min(46vw, 760px);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--fg);
+  font-family: 'Plus Jakarta Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-optical-sizing: auto; color: var(--fg);
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0f172a; --fg: #f1f5f9; --muted: #94a3b8; --line: #334155; --panel: rgba(15, 23, 42, 0.96); --accent: #818cf8; --accent-fg: #0f172a; }
@@ -191,6 +191,7 @@ button { cursor: pointer; }
 .browse-head p { margin: 2px 0 0; }
 .browse.loading .browse-grid { opacity: 0.55; transition: opacity 0.2s; }
 .browse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 22px 18px; }
+.browse-grid > * { min-width: 0; } /* long one-line titles must not widen the column */
 .browse-empty { grid-column: 1 / -1; padding: 30px 0; color: var(--muted); display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .browse-more { grid-column: 1 / -1; justify-self: center; }
 
@@ -269,7 +270,7 @@ button { cursor: pointer; }
   .sheet-handle span { width: 40px; height: 5px; border-radius: 999px; background: var(--line); }
   .browse-head { position: sticky; top: 22px; z-index: 1; margin: 0 -16px 12px; padding: 4px 16px 12px; background: var(--bg); touch-action: none; }
   .browse-head h2 { font-size: 1rem; }
-  .browse-grid { grid-template-columns: 1fr; gap: 22px; }
+  .browse-grid { grid-template-columns: minmax(0, 1fr); gap: 22px; }
   .ccard-cover { aspect-ratio: 16 / 9; }
   .fab { bottom: auto; top: 12px; }
   body[data-sheet='full'] .fab { display: none; }
@@ -282,3 +283,22 @@ button { cursor: pointer; }
   .overlay:has(.modal-filters) { align-items: flex-end; padding: 0; }
   .overlay:has(.modal-filters) .modal { border-radius: 20px 20px 0 0; width: 100%; }
 }
+
+
+/* ================================================================== icons (Lucide) + type */
+h1, h2, h3, h4 { letter-spacing: -0.015em; }
+.ico { flex: none; display: inline-block; vertical-align: -0.2em; }
+.btn, .back-btn, .nx-link, .view-toggle, #btn-global, .pick-text, .note { display: inline-flex; align-items: center; gap: 8px; }
+.btn { justify-content: center; }
+.note { display: flex; }
+.meta { display: flex; gap: 8px; align-items: center; color: var(--muted); margin: 3px 0; }
+.meta span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn, .fab, .cat-icon, .ccard-icon, .nx-badge, .nx-icon, .pin-card-icon { display: grid; place-items: center; }
+.fab { color: var(--fg); }
+.ccard-icon { color: #fff; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.25)); }
+.ccard-members { display: inline-flex; gap: 4px; align-items: center; font-weight: 600; }
+.nx-badge { color: #fff; }
+.nx-icon { color: var(--accent); }
+.pin-card-icon { color: var(--accent); }
+.filters-btn .ico { color: var(--fg); }
+@media (max-width: 899px) { .new-label { display: none; } .new-btn { padding: 9px 10px; } }

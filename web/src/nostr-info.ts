@@ -1,4 +1,6 @@
 import { el, modal } from './dom';
+import { I, icon } from './icons';
+import type { IconNode } from 'lucide';
 
 type Platform = 'ios' | 'android' | 'desktop';
 
@@ -47,8 +49,8 @@ function detectPlatform(): Platform {
 
 /** Friendly explainer: what Nostr is and how to get a key on each platform. */
 export function openNostrInfo() {
-  const feature = (icon: string, title: string, text: string) =>
-    el('div', { class: 'nx-feature' }, el('span', { class: 'nx-icon', 'aria-hidden': 'true', text: icon }),
+  const feature = (node: IconNode, title: string, text: string) =>
+    el('div', { class: 'nx-feature' }, el('span', { class: 'nx-icon' }, icon(node, { size: 18 })),
       el('div', {}, el('strong', { text: title }), el('p', { text })));
 
   const stepsHost = el('div', { class: 'nx-steps' });
@@ -69,12 +71,12 @@ export function openNostrInfo() {
   let close = () => {};
   close = modal('What is Nostr?', el('div', { class: 'nx' },
     el('div', { class: 'nx-hero' },
-      el('div', { class: 'nx-badge', 'aria-hidden': 'true', text: '🔑' }),
+      el('div', { class: 'nx-badge' }, icon(I.key, { size: 26 })),
       el('p', { class: 'nx-lead', text: 'Nostr is a login you own. Instead of a username and password stored by a company, you have a key that lives in an app on your device.' })),
     el('div', { class: 'nx-features' },
-      feature('🌐', 'One key, every app', 'The same key signs you in to any Nostr app. No new account each time.'),
-      feature('🛡️', 'Your key stays with you', 'Your signer app keeps the private key. Sites only receive a signature, never the key.'),
-      feature('🕊️', 'Owned by no one', 'Nostr is an open protocol, like email. No company can lock you out or delete your identity.')),
+      feature(I.globe, 'One key, every app', 'The same key signs you in to any Nostr app. No new account each time.'),
+      feature(I.shield, 'Your key stays with you', 'Your signer app keeps the private key. Sites only receive a signature, never the key.'),
+      feature(I.bird, 'Owned by no one', 'Nostr is an open protocol, like email. No company can lock you out or delete your identity.')),
     el('h3', { class: 'nx-h', text: 'Get your key' }),
     tabs,
     stepsHost,

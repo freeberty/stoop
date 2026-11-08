@@ -1,4 +1,5 @@
 import type { Category, CommunitySummary } from './api';
+import { I, icon } from './icons';
 
 type Child = Node | string | null | undefined | false;
 type Props = Partial<{ class: string; text: string; type: string; value: string; placeholder: string; title: string; disabled: boolean; hidden: boolean; checked: boolean; min: string; max: string; step: string; required: boolean; autocomplete: string; maxlength: string; onclick: (e: MouseEvent) => void; oninput: (e: Event) => void; onchange: (e: Event) => void; onkeydown: (e: KeyboardEvent) => void; onsubmit: (e: SubmitEvent) => void }> & Record<string, unknown>;
@@ -63,7 +64,7 @@ export function modal(title: string, body: HTMLElement, onClose?: () => void): (
   const close = () => { overlay.remove(); onClose?.(); };
   const overlay = el('div', { class: 'overlay', onclick: (e) => { if (e.target === overlay) close(); } },
     el('div', { class: 'modal', role: 'dialog', 'aria-label': title },
-      el('div', { class: 'modal-head' }, el('h2', { text: title }), el('button', { class: 'icon-btn', 'aria-label': 'Close', text: '✕', onclick: close })),
+      el('div', { class: 'modal-head' }, el('h2', { text: title }), el('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, icon(I.close, { size: 20 }))),
       body));
   document.body.append(overlay);
   return close;
